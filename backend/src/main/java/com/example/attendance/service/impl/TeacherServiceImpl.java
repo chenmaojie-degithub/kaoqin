@@ -1,0 +1,12 @@
+package com.example.attendance.service.impl;
+import com.baomidou.mybatisplus.core.metadata.IPage; import com.baomidou.mybatisplus.extension.plugins.pagination.Page; import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.example.attendance.dto.TeacherSaveRequest; import com.example.attendance.entity.*; import com.example.attendance.exception.BusinessException; import com.example.attendance.mapper.*; import com.example.attendance.service.TeacherService;
+import lombok.RequiredArgsConstructor; import org.springframework.security.crypto.password.PasswordEncoder; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
+@Service @RequiredArgsConstructor public class TeacherServiceImpl implements TeacherService {
+ private final TeacherMapper teachers; private final UserMapper users; private final PasswordEncoder encoder;
+ public IPage<Teacher> page(long p,long s,String k){return teachers.selectPage(new Page<>(p,s),Wrappers.<Teacher>lambdaQuery().and(k!=null&&!k.isBlank(),q->q.like(Teacher::getName,k).or().like(Teacher::getTeacherNo,k)).orderByDesc(Teacher::getId));}
+ @Transactional public Teacher create(TeacherSaveRequest r){User u=new User();u.setUsername(r.username());u.setPassword(encoder.encode(r.password()==null||r.password().isBlank()?"123456":r.password()));u.setRealName(r.name());u.setRole("TEACHER");u.setStatus(r.status()==null?1:r.status());users.insert(u);Teacher x=new Teacher();fill(x,r,u.getId());teachers.insert(x);return x;}
+ @Transactional public Teacher update(Long id,TeacherSaveRequest r){Teacher x=teachers.selectById(id);if(x==null)throw BusinessException.notFound("教师不存在");fill(x,r,x.getUserId());teachers.updateById(x);User u=users.selectById(x.getUserId());u.setUsername(r.username());u.setRealName(r.name());u.setStatus(r.status()==null?1:r.status());if(r.password()!=null&&!r.password().isBlank())u.setPassword(encoder.encode(r.password()));users.updateById(u);return x;}
+ @Transactional public void delete(Long id){Teacher x=teachers.selectById(id);if(x==null)throw BusinessException.notFound("教师不存在");teachers.deleteById(id);users.deleteById(x.getUserId());}
+ private void fill(Teacher x,TeacherSaveRequest r,Long uid){x.setUserId(uid);x.setTeacherNo(r.teacherNo());x.setName(r.name());x.setGender(r.gender());x.setTitle(r.title());x.setPhone(r.phone());x.setEmail(r.email());x.setStatus(r.status()==null?1:r.status());}
+}

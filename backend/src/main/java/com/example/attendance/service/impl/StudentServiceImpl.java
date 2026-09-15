@@ -1,0 +1,13 @@
+package com.example.attendance.service.impl;
+import com.baomidou.mybatisplus.core.metadata.IPage; import com.baomidou.mybatisplus.extension.plugins.pagination.Page; import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.example.attendance.dto.StudentSaveRequest; import com.example.attendance.entity.*; import com.example.attendance.exception.BusinessException; import com.example.attendance.mapper.*; import com.example.attendance.service.StudentService;
+import lombok.RequiredArgsConstructor; import org.springframework.security.crypto.password.PasswordEncoder; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional;
+@Service @RequiredArgsConstructor public class StudentServiceImpl implements StudentService {
+ private final StudentMapper students; private final UserMapper users; private final ClassInfoMapper classes; private final PasswordEncoder encoder;
+ public IPage<Student> page(long p,long s,String name,String no,Long classId){return students.selectPage(new Page<>(p,s),Wrappers.<Student>lambdaQuery().like(name!=null&&!name.isBlank(),Student::getName,name).like(no!=null&&!no.isBlank(),Student::getStudentNo,no).eq(classId!=null,Student::getClassId,classId).orderByDesc(Student::getId));}
+ @Transactional public Student create(StudentSaveRequest r){ if(classes.selectById(r.classId())==null)throw BusinessException.notFound("班级不存在"); User u=new User();u.setUsername(r.username());u.setPassword(encoder.encode(r.password()==null||r.password().isBlank()?"123456":r.password()));u.setRealName(r.name());u.setRole("STUDENT");u.setStatus(r.status()==null?1:r.status());users.insert(u); Student x=new Student();fill(x,r,u.getId());students.insert(x);return x; }
+ @Transactional public Student update(Long id,StudentSaveRequest r){Student x=students.selectById(id);if(x==null)throw BusinessException.notFound("学生不存在");fill(x,r,x.getUserId());students.updateById(x);User u=users.selectById(x.getUserId());u.setUsername(r.username());u.setRealName(r.name());u.setStatus(r.status()==null?1:r.status());if(r.password()!=null&&!r.password().isBlank())u.setPassword(encoder.encode(r.password()));users.updateById(u);return x;}
+ @Transactional public void delete(Long id){Student x=students.selectById(id);if(x==null)throw BusinessException.notFound("学生不存在");students.deleteById(id);users.deleteById(x.getUserId());}
+ private void fill(Student x,StudentSaveRequest r,Long uid){x.setUserId(uid);x.setStudentNo(r.studentNo());x.setName(r.name());x.setGender(r.gender());x.setPhone(r.phone());x.setEmail(r.email());x.setClassId(r.classId());x.setEnrollmentDate(r.enrollmentDate());x.setStatus(r.status()==null?1:r.status());}
+}
+

@@ -1,0 +1,2 @@
+<template><CrudTable title="课程" endpoint="/courses" :paged="false" :fields="fields"/></template><script setup>import CrudTable from'../components/CrudTable.vue';const fields=[{key:'courseCode',label:'课程编号',required:true},{key:'name',label:'课程名称',required:true},{key:'credit',label:'学分',type:'number',default:0},{key:'totalHours',label:'总学时',type:'number',default:0},{key:'description',label:'课程简介',type:'textarea',table:false},{key:'status',label:'状态',type:'select',default:1,options:[{label:'启用',value:1},{label:'停用',value:0}]}]</script>
+

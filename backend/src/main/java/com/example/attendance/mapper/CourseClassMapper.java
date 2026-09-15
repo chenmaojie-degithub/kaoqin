@@ -1,0 +1,1 @@
+package com.example.attendance.mapper; import com.baomidou.mybatisplus.core.mapper.BaseMapper; import com.example.attendance.entity.CourseClass; public interface CourseClassMapper extends BaseMapper<CourseClass> {}

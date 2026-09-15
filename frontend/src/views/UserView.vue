@@ -1,0 +1,2 @@
+<template><CrudTable title="账号" endpoint="/users" :fields="fields"/></template><script setup>import CrudTable from'../components/CrudTable.vue';const fields=[{key:'username',label:'用户名',required:true},{key:'realName',label:'姓名',required:true},{key:'role',label:'角色',type:'select',required:true,options:[{label:'管理员',value:'ADMIN'},{label:'教师',value:'TEACHER'},{label:'学生',value:'STUDENT'}]},{key:'password',label:'密码',type:'password',table:false},{key:'status',label:'状态',type:'select',default:1,options:[{label:'启用',value:1},{label:'停用',value:0}]}]</script>
+

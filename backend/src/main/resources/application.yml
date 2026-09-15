@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+spring:
+  config:
+    import: optional:file:${user.home}/.codex/.env[.properties]
+  application:
+    name: student-attendance-system
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/student_attendance?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false}
+    username: ${DB_USERNAME:attendance}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+attendance:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+  semester:
+    academic-year: ${ACADEMIC_YEAR:2026-2027}
+    name: ${SEMESTER_NAME:第一学期}
+    start-date: ${SEMESTER_START_DATE:2026-09-01}
+    end-date: ${SEMESTER_END_DATE:2027-01-17}

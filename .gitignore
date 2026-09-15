@@ -1,0 +1,10 @@
+.idea/
+.vscode/
+*.iml
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+backend/src/main/resources/application-local.yml
+*.log
+tmp/
