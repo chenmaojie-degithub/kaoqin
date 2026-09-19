@@ -44,6 +44,10 @@ schema.sql 会创建 student_attendance 数据库，并删除、重建本系统�
 
 升级脚本会保留全部旧课表，并将旧记录设置为第 1～20 周有效。若当前环境学期总周数不是 20，请先修改脚本顶部的 `schedule_default_end_week`。
 
+已有数据库增加密码签到功能时，再执行一次：
+
+    mysql -u root -p < database/migrate_attendance_session.sql
+
 建议创建独立数据库用户：
 
     CREATE USER 'attendance'@'localhost' IDENTIFIED BY 'your-strong-password';
@@ -57,10 +61,11 @@ schema.sql 会创建 student_attendance 数据库，并删除、重建本系统�
 - course_class 关联课程、班级、教师和学期
 - course_schedule 保存教学班每周的时间与地点
 - attendance_task 属于一个教学班
-- attendance_record 关联任务、学生和课程，只保存迟到、早退、请假、缺勤等异常；正常状态由任务名单动态推导
+- attendance_session 关联考勤任务，保存教师发布的60秒签到密码及状态
+- attendance_record 关联任务、学生和课程；手工录入只保存异常，密码签到会保存NORMAL状态和签到时间
 - leave_request 属于学生，可选指定课程
 
-唯一索引 attendance_record(student_id, course_id, attendance_date) 从数据库层防止重复考勤。
+唯一索引 attendance_record(student_id, course_id, attendance_date) 防止重复考勤，attendance_record(session_id, student_id) 防止重复签到。
 
 ## 后端配置
 
@@ -163,6 +168,10 @@ data.sql 中三个账号的密码都是 123456：
 | POST /api/teaching/{courseClassId}/schedules | 新增带生效周次的课程安排 |
 | PUT /api/teaching/{courseClassId}/schedules/{scheduleId} | 编辑整个范围、当前周或后续周次 |
 | GET/POST /api/attendance/tasks | 考勤任务 |
+| POST /api/attendance/sessions | 教师开启60秒密码签到 |
+| GET /api/attendance/sessions/{id} | 教师查询签到人数和状态 |
+| POST /api/attendance/sessions/{id}/close | 教师提前结束签到 |
+| POST /api/attendance/check-in | 学生提交六位签到密码 |
 | PUT /api/attendance/tasks/{id}/records | 批量保存考勤 |
 | GET /api/attendance/records | 考勤记录 |
 | GET/POST /api/leaves | 请假查询与提交 |
@@ -177,7 +186,7 @@ data.sql 中三个账号的密码都是 123456：
 
 ## 考勤记录与修改规则
 
-- 教师录入界面只提供“正常”和“缺勤”；正常学生不会写入 `attendance_record`，因此异常记录页只显示非正常数据。
+- 教师手工录入“正常”不会新增记录；密码签到成功会保留一条带签到时间的 `NORMAL` 记录，已有签到凭证不会被批量录入误删。
 - 学生端会根据考勤任务、所在班级、异常记录和已批准请假动态生成完整历史，因此仍能看到正常、迟到、早退、请假和缺勤。
 - 任务停止时写入 `closed_at`。停止后 20 分钟内教师或管理员仍可修改，超过后由后端统一拒绝，无法通过绕过前端按钮修改。
 

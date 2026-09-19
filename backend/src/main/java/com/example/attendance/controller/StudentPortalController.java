@@ -46,8 +46,9 @@ public class StudentPortalController {
         List<Map<String, Object>> todayRows = all.stream().filter(row -> today.toString().equals(String.valueOf(row.get("attendanceDate")))).toList();
         List<Map<String, Object>> month = all.stream().filter(row -> String.valueOf(row.get("attendanceDate")).startsWith(YearMonth.now().toString())).toList();
         long attended = month.stream().filter(row -> Set.of("NORMAL", "LATE", "EARLY_LEAVE").contains(row.get("status"))).count();
-        String todayStatus = todayRows.isEmpty() ? "NO_TASK" : todayRows.stream().anyMatch(row -> "OPEN".equals(row.get("taskStatus"))) ? "PENDING" :
-                todayRows.stream().map(row -> String.valueOf(row.get("status"))).filter(status -> !"NORMAL".equals(status)).findFirst().orElse("NORMAL");
+        String todayStatus = todayRows.isEmpty() ? "NO_TASK" : todayRows.stream().map(row -> String.valueOf(row.get("status"))).filter(status -> !"NORMAL".equals(status)).findFirst().orElseGet(() ->
+                todayRows.stream().anyMatch(row -> Boolean.TRUE.equals(row.get("checkedIn"))) ? "NORMAL" :
+                        todayRows.stream().anyMatch(row -> "OPEN".equals(row.get("taskStatus"))) ? "PENDING" : "NORMAL");
         long pendingLeaves = leaves.selectCount(Wrappers.<LeaveRequest>lambdaQuery().eq(LeaveRequest::getStudentId, student.getId()).eq(LeaveRequest::getStatus, "PENDING"));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("todayStatus", todayStatus); result.put("todayCourses", todayRows.size());
@@ -76,8 +77,12 @@ public class StudentPortalController {
         for (CourseSchedule schedule : todaySchedules) {
             CourseClass cc = ccMap.get(schedule.getCourseClassId()); Course course = courses.selectById(cc.getCourseId()); Teacher teacher = teachers.selectById(cc.getTeacherId()); AttendanceTask task = taskMap.get(cc.getId());
             Map<String, Object> row = new LinkedHashMap<>(); row.put("courseName", course == null ? "" : course.getName()); row.put("teacherName", teacher == null ? "" : teacher.getName());
-            row.put("startTime", schedule.getStartTime()); row.put("endTime", schedule.getEndTime()); row.put("location", schedule.getLocation());
-            row.put("requiresAttendance", task != null && "OPEN".equals(task.getStatus())); row.put("taskStatus", task == null ? "NONE" : task.getStatus()); result.add(row);
+            row.put("courseClassId", cc.getId()); row.put("startTime", schedule.getStartTime()); row.put("endTime", schedule.getEndTime()); row.put("location", schedule.getLocation());
+            Map<String, Object> session = task == null ? null : attendanceService.studentSession(task.getId());
+            row.put("taskId", task == null ? null : task.getId()); row.put("taskStatus", task == null ? "NONE" : task.getStatus());
+            row.put("requiresAttendance", session != null && !Boolean.TRUE.equals(session.get("checkedIn")));
+            if (session != null) { row.put("sessionId", session.get("sessionId")); row.put("sessionStatus", session.get("status")); row.put("expiresAt", session.get("expiresAt")); row.put("serverTime", session.get("serverTime")); row.put("checkedIn", session.get("checkedIn")); }
+            result.add(row);
         }
         return ApiResponse.ok(result);
     }
@@ -112,7 +117,7 @@ public class StudentPortalController {
         for (LeaveRequest leave : leaves.selectList(Wrappers.<LeaveRequest>lambdaQuery().eq(LeaveRequest::getStudentId, student.getId()).ne(LeaveRequest::getStatus, "PENDING").orderByDesc(LeaveRequest::getApprovedAt).last("LIMIT " + limit))) {
             result.add(notification("LEAVE", "请假" + ("APPROVED".equals(leave.getStatus()) ? "已通过" : "已拒绝"), leave.getApprovalComment() == null ? "请查看申请详情" : leave.getApprovalComment(), leave.getApprovedAt()));
         }
-        for (AttendanceRecord record : records.selectList(Wrappers.<AttendanceRecord>lambdaQuery().eq(AttendanceRecord::getStudentId, student.getId()).ne(AttendanceRecord::getStatus, "LEAVE").orderByDesc(AttendanceRecord::getAttendanceDate).last("LIMIT " + limit))) {
+        for (AttendanceRecord record : records.selectList(Wrappers.<AttendanceRecord>lambdaQuery().eq(AttendanceRecord::getStudentId, student.getId()).notIn(AttendanceRecord::getStatus, List.of("LEAVE", "NORMAL")).orderByDesc(AttendanceRecord::getAttendanceDate).last("LIMIT " + limit))) {
             Course course = courses.selectById(record.getCourseId()); result.add(notification("ATTENDANCE", "考勤异常提醒", (course == null ? "课程" : course.getName()) + "：" + statusName(record.getStatus()), record.getUpdatedAt()));
         }
         List<Long> ccIds = assignments.selectList(Wrappers.<CourseClass>lambdaQuery().eq(CourseClass::getClassId, student.getClassId())).stream().map(CourseClass::getId).toList();

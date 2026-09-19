@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <el-card class="page-card">
-      <div class="toolbar"><div><h3 class="section-title">批量录入考勤</h3><span class="muted">任务 #{{ $route.params.id }}，只保存缺勤等异常，正常学生不产生考勤记录</span></div><div class="spacer" /><el-tag v-if="!editable" type="danger">已超过修改期限</el-tag><el-tag v-else-if="editableUntil" type="warning">可修改至 {{ formatTime(editableUntil) }}</el-tag><el-button :disabled="!editable" @click="allNormal">全部正常</el-button><el-button type="primary" :disabled="!editable || !dirtyCount" :loading="saving" @click="save">{{ saved ? '已保存' : dirtyCount ? `保存 ${dirtyCount} 项修改` : '没有待保存修改' }}</el-button></div>
+      <div class="toolbar"><div><h3 class="section-title">批量录入考勤</h3><span class="muted">任务 #{{ $route.params.id }}，手工正常不新增记录，密码签到凭证会保留</span></div><div class="spacer" /><el-tag v-if="!editable" type="danger">已超过修改期限</el-tag><el-tag v-else-if="editableUntil" type="warning">可修改至 {{ formatTime(editableUntil) }}</el-tag><el-button :disabled="!editable" @click="allNormal">全部正常</el-button><el-button type="primary" :disabled="!editable || !dirtyCount" :loading="saving" @click="save">{{ saved ? '已保存' : dirtyCount ? `保存 ${dirtyCount} 项修改` : '没有待保存修改' }}</el-button></div>
       <el-alert v-if="editableUntil && editable" title="考勤已停止，停止后20分钟内仍可更改；到期后任何角色都不能修改。" type="warning" show-icon :closable="false" class="tip" />
       <AppState v-if="error" type="error" action="重新加载" :loading="loading" @action="load" />
       <AppSkeleton v-else-if="loading && !rows.length" :rows="8" />
