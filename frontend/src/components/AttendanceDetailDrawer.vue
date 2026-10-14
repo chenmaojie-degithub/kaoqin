@@ -3,7 +3,7 @@
     <div v-if="record" class="detail-drawer">
       <div class="detail-hero"><div><small>考勤状态</small><StatusBadge :status="record.status" /></div><el-icon><Calendar /></el-icon></div>
       <dl><div><dt>课程</dt><dd>{{ record.courseName || `课程 #${record.courseId || '—'}` }}</dd></div><div><dt>日期</dt><dd>{{ record.attendanceDate || '—' }}</dd></div><div v-if="record.studentNo"><dt>学号</dt><dd>{{ record.studentNo }}</dd></div><div v-if="record.studentName"><dt>姓名</dt><dd>{{ record.studentName }}</dd></div><div><dt>备注</dt><dd>{{ record.remark || '无备注' }}</dd></div></dl>
-      <el-alert title="此处仅展示系统已有的考勤数据" description="签到时间等未由当前接口提供的信息不会在此虚构显示。" type="info" :closable="false" show-icon />
+      <p>密码签到：{{ record.checkInTime ? `已签到 · ${record.checkInTime.replace('T', ' ')}` : '无签到时间凭证（正常考勤不代表已密码签到）' }}</p>
     </div>
   </el-drawer>
 </template>

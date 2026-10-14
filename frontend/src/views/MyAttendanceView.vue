@@ -1,6 +1,6 @@
 <template>
   <div class="page attendance-page">
-    <div class="toolbar"><div><h2>我的考勤</h2><span class="muted">正常记录由已完成的考勤任务自动生成</span></div><div class="spacer" /><el-radio-group v-model="mode"><el-radio-button value="calendar">日历</el-radio-button><el-radio-button value="list">列表</el-radio-button></el-radio-group></div>
+    <div class="toolbar"><div><h2>我的考勤</h2><span class="muted">考勤正常不代表已密码签到；点击记录查看签到时间凭证</span></div><div class="spacer" /><el-radio-group v-model="mode"><el-radio-button value="calendar">日历</el-radio-button><el-radio-button value="list">列表</el-radio-button></el-radio-group></div>
     <AppState v-if="error" type="error" action="重新加载" :loading="loading" @action="load" />
     <template v-else>
       <AppSkeleton v-if="loading" type="dashboard" />

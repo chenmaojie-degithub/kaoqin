@@ -46,16 +46,37 @@ public class StudentPortalController {
         List<Map<String, Object>> todayRows = all.stream().filter(row -> today.toString().equals(String.valueOf(row.get("attendanceDate")))).toList();
         List<Map<String, Object>> month = all.stream().filter(row -> String.valueOf(row.get("attendanceDate")).startsWith(YearMonth.now().toString())).toList();
         long attended = month.stream().filter(row -> Set.of("NORMAL", "LATE", "EARLY_LEAVE").contains(row.get("status"))).count();
-        String todayStatus = todayRows.isEmpty() ? "NO_TASK" : todayRows.stream().map(row -> String.valueOf(row.get("status"))).filter(status -> !"NORMAL".equals(status)).findFirst().orElseGet(() ->
-                todayRows.stream().anyMatch(row -> Boolean.TRUE.equals(row.get("checkedIn"))) ? "NORMAL" :
-                        todayRows.stream().anyMatch(row -> "OPEN".equals(row.get("taskStatus"))) ? "PENDING" : "NORMAL");
+        String todayStatus = todayRows.stream().map(row -> String.valueOf(row.get("status"))).filter(status -> !"NORMAL".equals(status)).findFirst().orElse("NORMAL");
+        List<Map<String, Object>> checkIns = todayCheckIns().data();
+        String checkInState = "NO_TASK";
+        if (!checkIns.isEmpty()) {
+            // Outstanding tasks take precedence; one successful check-in must not hide another pending task.
+            checkInState = List.of("OPEN", "WAITING", "EXPIRED", "CLOSED", "SIGNED").stream()
+                    .filter(state -> checkIns.stream().anyMatch(row -> state.equals(row.get("checkInState"))))
+                    .findFirst().orElse("WAITING");
+        }
         long pendingLeaves = leaves.selectCount(Wrappers.<LeaveRequest>lambdaQuery().eq(LeaveRequest::getStudentId, student.getId()).eq(LeaveRequest::getStatus, "PENDING"));
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("todayStatus", todayStatus); result.put("todayCourses", todayRows.size());
+        result.put("todayCheckInState", checkInState);
         result.put("recentAttendance", all.stream().limit(5).toList());
         result.put("monthlyRate", month.isEmpty() ? 100 : Math.round(attended * 1000.0 / month.size()) / 10.0);
         result.put("pendingLeaves", pendingLeaves); result.put("latestNotifications", notificationRows(student, 5));
         return ApiResponse.ok(result);
+    }
+
+    @GetMapping("/today-check-ins")
+    public ApiResponse<List<Map<String, Object>>> todayCheckIns() {
+        Student student = currentStudent();
+        List<Map<String, Object>> rows = attendanceService.records(null, student.getId(), null, LocalDate.now());
+        for (Map<String, Object> row : rows) {
+            Object attendanceStatus = row.get("status");
+            Map<String, Object> session = attendanceService.studentSession((Long) row.get("taskId"));
+            row.putAll(session);
+            row.put("sessionStatus", session.get("status"));
+            row.put("status", attendanceStatus);
+        }
+        return ApiResponse.ok(rows);
     }
 
     @GetMapping("/today-schedule")
@@ -80,7 +101,7 @@ public class StudentPortalController {
             row.put("courseClassId", cc.getId()); row.put("startTime", schedule.getStartTime()); row.put("endTime", schedule.getEndTime()); row.put("location", schedule.getLocation());
             Map<String, Object> session = task == null ? null : attendanceService.studentSession(task.getId());
             row.put("taskId", task == null ? null : task.getId()); row.put("taskStatus", task == null ? "NONE" : task.getStatus());
-            row.put("requiresAttendance", session != null && !Boolean.TRUE.equals(session.get("checkedIn")));
+            row.put("requiresAttendance", session != null && "OPEN".equals(session.get("status")) && !Boolean.TRUE.equals(session.get("checkedIn")));
             if (session != null) { row.put("sessionId", session.get("sessionId")); row.put("sessionStatus", session.get("status")); row.put("expiresAt", session.get("expiresAt")); row.put("serverTime", session.get("serverTime")); row.put("checkedIn", session.get("checkedIn")); }
             result.add(row);
         }

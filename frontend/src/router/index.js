@@ -24,7 +24,15 @@ const routes=[
  {path:'/:pathMatch(.*)*',component:()=>import('../views/NotFoundView.vue'),meta:{public:true,title:'404'}}
 ]
 const router=createRouter({history:createWebHistory(),routes})
-router.beforeEach(to=>{const auth=useAuthStore();if(to.meta.public)return auth.token&&to.path==='/login'?'/dashboard':true;if(!auth.token)return {path:'/login',query:{redirect:to.fullPath}};if(to.meta.roles&&!to.meta.roles.includes(auth.role))return '/dashboard';return true})
+router.beforeEach(async to=>{
+ const auth=useAuthStore()
+ const token=localStorage.getItem('attendance_token')||''
+ if(token && auth.verifiedToken!==token){try{await auth.restore()}catch{return to.meta.public ? true : {path:'/login',query:{redirect:to.fullPath}}}}
+ if(to.meta.public)return token&&to.path==='/login'?'/dashboard':true
+ if(!token)return {path:'/login',query:{redirect:to.fullPath}}
+ if(to.meta.roles&&!to.meta.roles.includes(auth.role))return '/dashboard'
+ return true
+})
 router.afterEach(to=>document.title=`${to.meta.title||'系统'} - 学生考勤管理系统`)
 export default router
 export { routes }

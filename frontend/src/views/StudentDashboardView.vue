@@ -2,9 +2,9 @@
   <div class="page student-dashboard">
     <section class="student-hero" data-reveal>
       <div><p>{{ greeting }}</p><h1>{{ auth.user?.realName }}，欢迎回来</h1><span>今天是 {{ todayText }}，你的学习与考勤动态都在这里。</span></div>
-      <div class="check-state" :class="data.todayStatus?.toLowerCase()">
+      <div class="check-state" :class="data.todayCheckInState?.toLowerCase()">
         <el-icon><CircleCheckFilled /></el-icon>
-        <div><small>今日签到状态</small><strong>{{ statusText[data.todayStatus] || (loading ? '加载中' : '暂无安排') }}</strong></div>
+        <div><small>今日签到状态</small><strong>{{ error ? '签到状态刷新失败' : checkLabels[data.todayCheckInState] || (loading ? '加载中' : '暂无安排') }}</strong><el-button type="primary" @click="$router.push('/student/schedule#check-in')">去签到</el-button></div>
       </div>
     </section>
 
@@ -25,7 +25,7 @@
               <div v-for="row in data.recentAttendance" :key="`${row.taskId}-${row.attendanceDate}`" class="activity">
                 <div class="date-box"><b>{{ row.attendanceDate?.slice(8) }}</b><span>{{ row.attendanceDate?.slice(5,7) }}月</span></div>
                 <div class="activity-main"><b>{{ row.courseName || '课程考勤' }}</b><span>{{ row.attendanceDate }} · {{ row.remark || '无备注' }}</span></div>
-                <StatusBadge :status="row.status" />
+                <StatusBadge :status="row.status" /><el-tag :type="row.checkedIn ? 'success' : 'info'">{{ row.checkedIn ? '已密码签到' : '无密码签到凭证' }}</el-tag>
               </div>
             </TransitionGroup>
           </el-card>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import request from '../utils/request'
 import { useAuthStore } from '../stores/auth'
 import { useCountUp } from '../composables/useCountUp'
@@ -60,10 +60,11 @@ const auth = useAuthStore()
 const data = ref({})
 const loading = ref(false)
 const error = ref(false)
+let refreshTimer, fetching = false, disposed = false
 const now = new Date()
 const greeting = computed(() => now.getHours() < 12 ? '早上好' : now.getHours() < 18 ? '下午好' : '晚上好')
 const todayText = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(now)
-const statusText = { NO_TASK: '今日无考勤', PENDING: '待签到', NORMAL: '已正常签到', LATE: '迟到', EARLY_LEAVE: '早退', LEAVE: '已请假', ABSENT: '缺勤' }
+const checkLabels = { NO_TASK: '今日无考勤', OPEN: '待签到', SIGNED: '今日任务均已签到', WAITING: '等待教师开启签到', EXPIRED: '签到码已过期', CLOSED: '签到已结束（未签到）' }
 const metricDefinitions = [
   { key: 'todayCourses', label: '今日考勤课程', unit: '门', fallback: 0, decimals: 0 },
   { key: 'monthlyRate', label: '本月出勤率', unit: '%', fallback: 100, decimals: 1 },
@@ -79,20 +80,24 @@ const metrics = metricDefinitions.map(metric => ({
 }))
 
 const formatTime = value => value ? value.replace('T', ' ').slice(0, 16) : ''
-async function load() {
-  loading.value = true
-  error.value = false
+async function load(silent = false) {
+  if (fetching || disposed) return
+  fetching = true
+  if (!silent) loading.value = true
   try {
-    data.value = await request.get('/student-portal/dashboard')
+    const result = await request.get('/student-portal/dashboard', { silent })
+    if (!disposed) { data.value = result; error.value = false }
   } catch {
     error.value = true
   } finally {
     loading.value = false
+    fetching = false
   }
 }
 
 useReveal()
-onMounted(load)
+onMounted(() => { load(); refreshTimer = setInterval(() => load(true), 5000) })
+onBeforeUnmount(() => { disposed = true; clearInterval(refreshTimer) })
 </script>
 
 <style scoped>

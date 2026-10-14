@@ -5,6 +5,16 @@
       <div class="student-week-nav"><el-button circle :disabled="selectedWeek <= 1" @click="previousWeek(false)"><el-icon><ArrowLeft /></el-icon></el-button><el-select v-model="selectedWeek" aria-label="查看周次"><el-option v-for="item in weekOptions" :key="item" :label="`第 ${item} 周`" :value="item" /></el-select><el-button circle :disabled="selectedWeek >= (calendar?.totalWeeks || 1)" @click="nextWeek(false)"><el-icon><ArrowRight /></el-icon></el-button><el-button text type="primary" @click="goCurrentWeek">回到本周</el-button></div>
     </div>
     <el-alert v-if="semesterStateText" :title="semesterStateText" type="warning" show-icon :closable="false" class="semester-alert" />
+    <el-card class="page-card weekly-card" id="check-in">
+      <template #header><div class="card-head"><strong>今日签到任务</strong><el-button :loading="refreshing" @click="refreshCheckIns()">刷新签到</el-button></div></template>
+      <el-alert v-if="checkError" title="签到任务刷新失败，请重试；当前不能提交签到" type="warning" :closable="false" />
+      <AppState v-if="!checkRows.length && !loading" title="今天暂无考勤任务" description="教师开启签到后，此处每5秒自动更新；没有当天课表也能签到。" />
+      <div v-for="row in checkRows" :key="row.taskId" class="schedule-item">
+        <div class="course"><h3>{{ row.courseName }}</h3><p>考勤：{{ attendanceLabels[row.status] || row.status }}<span v-if="row.checkInTime"> · 签到时间 {{ row.checkInTime.replace('T', ' ') }}</span></p></div>
+        <el-button v-if="row.checkInState === 'OPEN'" type="primary" :disabled="checkError" @click="openCheckIn(row)">立即签到</el-button>
+        <el-tag v-else :type="row.checkedIn ? 'success' : 'info'">{{ checkLabels[row.checkInState] || '等待教师开启签到' }}</el-tag>
+      </div>
+    </el-card>
     <el-card class="page-card weekly-card" data-reveal>
       <AppState v-if="error" type="error" action="重新加载" :loading="loading" @action="load" />
       <AppSkeleton v-else-if="loading" :rows="5" />
@@ -15,12 +25,12 @@
       <template #header><div class="card-head"><strong>今天的课程</strong><span>{{ todayText }}</span></div></template>
       <AppState v-if="!loading && !todayRows.length" title="今天没有课程安排" description="可以切换周次查看完整课表" action="查看我的考勤" @action="$router.push('/my/attendance')" />
       <TransitionGroup v-else name="list-rise" tag="div">
-        <div v-for="row in todayRows" :key="row.courseName + row.startTime" class="schedule-item"><div class="time"><strong>{{ row.startTime?.slice(0, 5) }}</strong><span>{{ row.endTime?.slice(0, 5) }}</span></div><div class="line"></div><div class="course"><h3>{{ row.courseName }}</h3><p><el-icon><User /></el-icon>{{ row.teacherName }}　<el-icon><Location /></el-icon>{{ row.location }}</p></div><el-button v-if="row.requiresAttendance" type="danger" @click="openCheckIn(row)">立即签到</el-button><el-tag v-else-if="row.checkedIn" type="success" size="large">已签到</el-tag><el-tag v-else :type="row.taskStatus === 'CLOSED' ? 'info' : 'info'" size="large">{{ row.taskStatus === 'CLOSED' ? '考勤已结束' : '暂无签到' }}</el-tag></div>
+        <div v-for="row in todayRows" :key="row.courseClassId + '-' + row.startTime" class="schedule-item"><div class="time"><strong>{{ row.startTime?.slice(0, 5) }}</strong><span>{{ row.endTime?.slice(0, 5) }}</span></div><div class="line"></div><div class="course"><h3>{{ row.courseName }}</h3><p><el-icon><User /></el-icon>{{ row.teacherName }}　<el-icon><Location /></el-icon>{{ row.location }}</p></div><el-tag type="info">签到请查看上方任务</el-tag></div>
       </TransitionGroup>
     </el-card>
     <el-dialog v-model="checkVisible" title="课程签到" width="420px" append-to-body align-center @closed="closeCheckIn">
-      <div class="check-in-panel"><p>{{ checkingRow?.courseName }}</p><el-input v-model="signCode" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入6位签到密码" @input="signCode = signCode.replace(/\D/g, '').slice(0, 6)" @keyup.enter="submitCheckIn" /><span>签到码剩余 {{ checkRemaining }} 秒</span></div>
-      <template #footer><el-button @click="checkVisible = false">取消</el-button><el-button type="primary" :disabled="signCode.length !== 6 || !checkRemaining" :loading="checking" @click="submitCheckIn">确认签到</el-button></template>
+      <div class="check-in-panel"><p>{{ checkingRow?.courseName }}</p><el-input v-model="signCode" maxlength="6" inputmode="numeric" autocomplete="one-time-code" aria-label="6位签到密码" placeholder="请输入6位签到密码" @input="signCode = signCode.replace(/\D/g, '').slice(0, 6)" @keyup.enter="submitCheckIn" /><span>{{ checkingRow?.checkInState === 'OPEN' ? `签到码剩余 ${checkRemaining} 秒` : checkLabels[checkingRow?.checkInState] }}</span></div>
+      <template #footer><el-button @click="checkVisible = false">取消</el-button><el-button type="primary" :disabled="signCode.length !== 6 || checkingRow?.checkInState !== 'OPEN' || checkError" :loading="checking" @click="submitCheckIn">确认签到</el-button></template>
     </el-dialog>
   </div>
 </template>
@@ -37,22 +47,45 @@ import WeeklyScheduleGrid from '../components/WeeklyScheduleGrid.vue'
 
 const assignments = ref([]), todayRows = ref([]), loading = ref(false), error = ref(false)
 const checkVisible = ref(false), checkingRow = ref(null), signCode = ref(''), checking = ref(false), checkRemaining = ref(0)
-let checkTimer, checkOffset = 0
+const checkRows = ref([]), refreshing = ref(false), checkError = ref(false)
+const attendanceLabels = { NORMAL: '正常（不代表已密码签到）', ABSENT: '缺勤', LEAVE: '请假', LATE: '迟到', EARLY_LEAVE: '早退' }
+const checkLabels = { SIGNED: '已签到', OPEN: '待签到', WAITING: '等待教师开启签到', EXPIRED: '签到码已过期，请联系教师重新开启签到', CLOSED: '签到已结束' }
+let checkTimer, pollTimer, disposed = false
 const { calendar, selectedWeek, now, weekOptions, weekDates, weekDateText, semesterStateText, loadSemesterCalendar, previousWeek, nextWeek, goCurrentWeek } = useSemesterCalendar()
 const classId = computed(() => assignments.value[0]?.classId)
 const todayText = computed(() => calendar.value?.today ? new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date(`${calendar.value.today}T12:00:00`)) : '')
 
 async function load() {
   loading.value = true; error.value = false
-  try { [assignments.value, todayRows.value] = await Promise.all([request.get('/teaching'), request.get('/student-portal/today-schedule'), loadSemesterCalendar()]).then(([courses, today]) => [courses, today]) }
+  try { [assignments.value, todayRows.value] = await Promise.all([request.get('/teaching'), request.get('/student-portal/today-schedule'), loadSemesterCalendar(), refreshCheckIns()]).then(([courses, today]) => [courses, today]) }
   catch { error.value = true }
   finally { loading.value = false }
 }
-function updateRemaining() { if (!checkingRow.value) return; checkRemaining.value = Math.max(0, Math.ceil((Date.parse(checkingRow.value.expiresAt) - Date.now() - checkOffset) / 1000)) }
-function openCheckIn(row) { checkingRow.value = row; signCode.value = ''; checkOffset = Date.parse(row.serverTime) - Date.now(); updateRemaining(); clearInterval(checkTimer); checkTimer = setInterval(updateRemaining, 250); checkVisible.value = true }
-function closeCheckIn() { clearInterval(checkTimer); checkingRow.value = null; signCode.value = '' }
-async function submitCheckIn() { if (signCode.value.length !== 6 || !checkingRow.value) return; checking.value = true; try { await request.post('/attendance/check-in', { sessionId: checkingRow.value.sessionId, signCode: signCode.value }); ElMessage.success('签到成功'); checkVisible.value = false; clearInterval(checkTimer); await load() } finally { checking.value = false } }
-useReveal(); onMounted(load); onBeforeUnmount(() => clearInterval(checkTimer))
+async function refreshCheckIns(silent = false) {
+  if (refreshing.value || disposed) return
+  refreshing.value = true
+  try {
+    const rows = await request.get('/student-portal/today-check-ins', { silent })
+    if (disposed) return
+    checkRows.value = rows.map(row => ({ ...row, remainingAtFetch: Math.max(0, (Date.parse(row.expiresAt) - Date.parse(row.serverTime)) / 1000), fetchedAt: performance.now() }))
+    checkError.value = false
+    if (checkingRow.value) {
+      const fresh = checkRows.value.find(row => row.taskId === checkingRow.value.taskId)
+      if (fresh?.sessionId === checkingRow.value.sessionId) checkingRow.value = fresh
+      else { checkVisible.value = false; closeCheckIn() }
+    }
+    updateRemaining()
+  } catch { checkError.value = true } finally { refreshing.value = false }
+}
+function updateRemaining() {
+  for (const row of checkRows.value) if (row.checkInState === 'OPEN' && row.remainingAtFetch - (performance.now() - row.fetchedAt) / 1000 <= 0) row.checkInState = 'EXPIRED'
+  const row = checkingRow.value
+  checkRemaining.value = row ? Math.max(0, Math.ceil(row.remainingAtFetch - (performance.now() - row.fetchedAt) / 1000)) : 0
+}
+function openCheckIn(row) { checkingRow.value = checkRows.value.find(item => item.taskId === row.taskId); if (!checkingRow.value || checkingRow.value.checkInState !== 'OPEN') return; signCode.value = ''; updateRemaining(); checkVisible.value = true }
+function closeCheckIn() { checkingRow.value = null; signCode.value = '' }
+async function submitCheckIn() { if (checking.value || checkError.value || signCode.value.length !== 6 || checkingRow.value?.checkInState !== 'OPEN') return; checking.value = true; try { await request.post('/attendance/check-in', { sessionId: checkingRow.value.sessionId, signCode: signCode.value }); ElMessage.success('签到成功'); checkVisible.value = false } finally { checking.value = false; await refreshCheckIns() } }
+useReveal(); onMounted(() => { load(); checkTimer = setInterval(updateRemaining, 250); pollTimer = setInterval(() => refreshCheckIns(true), 5000) }); onBeforeUnmount(() => { disposed = true; clearInterval(checkTimer); clearInterval(pollTimer) })
 </script>
 
 <style scoped>

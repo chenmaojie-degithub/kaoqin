@@ -10,8 +10,12 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException exception) {
@@ -41,9 +45,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception) {
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException exception, HttpServletRequest request) {
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        log.warn("Role access denied: method={}, path={}, authorities={}", request.getMethod(), request.getRequestURI(),
+                authentication == null ? "anonymous" : authentication.getAuthorities());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error(40300, "无权访问该资源"));
+                .body(ApiResponse.error(40300, "当前登录角色无权执行此操作，请确认登录账号"));
     }
 
     @ExceptionHandler(Exception.class)

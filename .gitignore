@@ -8,3 +8,13 @@ frontend/.env.local
 backend/src/main/resources/application-local.yml
 *.log
 tmp/
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+backups/
+**/backups/
+database/exports/
+*.dump
