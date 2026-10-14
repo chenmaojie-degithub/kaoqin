@@ -14,6 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
+import com.example.attendance.sync.SyncProtocol;
+import com.example.attendance.sync.SyncStore;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,6 +41,16 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final TeacherMapper teachers;
     private final LeaveRequestMapper leaves;
     private final AttendanceSessionMapper sessions;
+    @Autowired private ApplicationEventPublisher syncPublisher;
+    @Autowired private SyncStore syncStore;
+
+    private void changed(String type, Long taskId, Long studentId) {
+        if (syncPublisher != null) syncPublisher.publishEvent(new SyncProtocol.Changed(type, taskId, studentId));
+    }
+    private boolean hasReceipt(AttendanceRecord record) {
+        return record != null && record.getSessionId() != null && record.getCheckInTime() != null;
+    }
+    private void assertOwner(Long taskId) { if (syncStore != null) syncStore.assertOwner(taskId); }
 
     private CourseClass allowed(Long ccId) {
         CourseClass cc = courseClasses.selectById(ccId);
@@ -56,17 +70,19 @@ public class AttendanceServiceImpl implements AttendanceService {
         AttendanceTask task = new AttendanceTask();
         task.setCourseClassId(request.courseClassId()); task.setAttendanceDate(request.attendanceDate());
         task.setStatus("OPEN"); task.setRemark(request.remark()); task.setCreatedBy(SecurityUtils.current().id());
-        tasks.insert(task); return task;
+        tasks.insert(task); changed("ATTENDANCE_TASK", task.getId(), null); return task;
     }
 
     @Override @Transactional
     public AttendanceTask changeTaskStatus(Long id, String status) {
         if (!Set.of("OPEN", "CLOSED").contains(status)) throw BusinessException.conflict("考勤任务状态无效");
         AttendanceTask task = lockedTask(id); allowed(task.getCourseClassId());
+        assertOwner(id);
         if (Objects.equals(task.getStatus(), status)) return task;
         if ("CLOSED".equals(task.getStatus())) assertEditable(task);
         task.setStatus(status); task.setClosedAt("CLOSED".equals(status) ? LocalDateTime.now() : null);
         tasks.updateById(task);
+        changed("ATTENDANCE_TASK", id, null);
         if ("CLOSED".equals(status)) for (AttendanceSession session : sessions.selectList(Wrappers.<AttendanceSession>lambdaQuery().eq(AttendanceSession::getTaskId, id).eq(AttendanceSession::getStatus, "OPEN"))) { session.setStatus("CLOSED"); sessions.updateById(session); }
         return task;
     }
@@ -99,12 +115,14 @@ public class AttendanceServiceImpl implements AttendanceService {
             if ("NORMAL".equals(item.status())) {
                 if (existing != null && existing.getSessionId() != null) { existing.setStatus("NORMAL"); existing.setRemark(null); records.updateById(existing); }
                 else records.hardDeleteException(item.studentId(), cc.getCourseId(), task.getAttendanceDate());
+                changed("ATTENDANCE_RECORD", taskId, item.studentId());
                 continue;
             }
             AttendanceRecord record = existing == null ? new AttendanceRecord() : existing;
             if (existing == null) { record.setTaskId(taskId); record.setStudentId(item.studentId()); record.setCourseId(cc.getCourseId()); record.setAttendanceDate(task.getAttendanceDate()); record.setRecordedBy(SecurityUtils.current().id()); }
             record.setStatus(item.status()); record.setRemark(item.remark());
             if (record.getId() == null) records.insert(record); else records.updateById(record);
+            changed("ATTENDANCE_RECORD", taskId, item.studentId());
         }
     }
 
@@ -140,7 +158,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             row.put("studentNo", me.getStudentNo()); row.put("studentName", me.getName()); row.put("courseId", cc.getCourseId());
             Course course = courses.selectById(cc.getCourseId()); row.put("courseName", course == null ? "" : course.getName());
             row.put("attendanceDate", task.getAttendanceDate()); row.put("status", status); row.put("taskStatus", task.getStatus());
-            row.put("checkedIn", exception != null && exception.getSessionId() != null && exception.getCheckInTime() != null); row.put("checkInTime", exception == null ? null : exception.getCheckInTime());
+            row.put("checkedIn", hasReceipt(exception)); row.put("checkInTime", exception == null ? null : exception.getCheckInTime());
             row.put("remark", exception == null ? null : exception.getRemark()); result.add(row);
         }
         return result;
@@ -151,7 +169,8 @@ public class AttendanceServiceImpl implements AttendanceService {
         row.put("id", record.getId()); row.put("taskId", record.getTaskId()); row.put("studentId", record.getStudentId());
         row.put("studentNo", student == null ? "" : student.getStudentNo()); row.put("studentName", student == null ? "" : student.getName());
         row.put("courseId", record.getCourseId()); row.put("courseName", course == null ? "" : course.getName()); row.put("attendanceDate", record.getAttendanceDate());
-        row.put("status", record.getStatus()); row.put("checkInTime", record.getCheckInTime()); row.put("remark", record.getRemark()); return row;
+        row.put("status", record.getStatus()); row.put("checkedIn", hasReceipt(record));
+        row.put("checkInTime", record.getCheckInTime()); row.put("remark", record.getRemark()); return row;
     }
 
     @Override @Transactional
@@ -159,6 +178,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         AttendanceTask task = tasks.lockById(taskId);
         if (task == null) throw BusinessException.notFound("考勤任务不存在");
         CourseClass cc = allowed(task.getCourseClassId());
+        assertOwner(taskId);
         if (!LocalDate.now().equals(task.getAttendanceDate())) throw BusinessException.conflict("只能为今天的课程开启签到");
         if (!"OPEN".equals(task.getStatus())) throw BusinessException.conflict("考勤任务已停止");
         for (AttendanceSession current : sessions.selectList(Wrappers.<AttendanceSession>lambdaQuery()
@@ -187,7 +207,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .eq(AttendanceSession::getTaskId, taskId).orderByDesc(AttendanceSession::getId).last("LIMIT 1"));
         AttendanceRecord record = records.selectOne(Wrappers.<AttendanceRecord>lambdaQuery()
                 .eq(AttendanceRecord::getStudentId, student.getId()).eq(AttendanceRecord::getTaskId, taskId));
-        boolean checkedIn = record != null && record.getSessionId() != null && record.getCheckInTime() != null;
+        boolean checkedIn = hasReceipt(record);
         String status = session == null ? "WAITING" : effectiveStatus(session);
         if ("CLOSED".equals(task.getStatus())) status = "CLOSED";
         Map<String, Object> row = new LinkedHashMap<>();
@@ -219,13 +239,14 @@ public class AttendanceServiceImpl implements AttendanceService {
         if (!MessageDigest.isEqual(session.getSignCode().getBytes(StandardCharsets.UTF_8), request.signCode().getBytes(StandardCharsets.UTF_8)))
             throw BusinessException.conflict("签到密码错误");
         AttendanceRecord record = recordFor(student.getId(), session);
-        if (record != null && record.getSessionId() != null) throw BusinessException.conflict("你已经完成本节课签到");
+        if (record != null && (record.getSessionId() != null || hasReceipt(record))) throw BusinessException.conflict("你已经完成本节课签到");
         if (record == null) { record = new AttendanceRecord(); record.setTaskId(task.getId()); record.setStudentId(student.getId()); record.setCourseId(session.getCourseId()); record.setAttendanceDate(task.getAttendanceDate()); }
         LocalDateTime checkInTime = LocalDateTime.now();
         if (!checkInTime.isBefore(session.getExpiresAt())) throw BusinessException.conflict("签到码已过期，请联系教师重新开启签到");
         record.setSessionId(session.getId()); record.setStatus("NORMAL"); record.setCheckInTime(checkInTime); record.setRemark("密码签到"); record.setRecordedBy(SecurityUtils.current().id());
         try { if (record.getId() == null) records.insert(record); else records.updateById(record); }
         catch (DuplicateKeyException exception) { throw BusinessException.conflict("你已经完成本节课签到"); }
+        changed("ATTENDANCE_RECORD", task.getId(), student.getId());
     }
 
     private Student currentStudent() {

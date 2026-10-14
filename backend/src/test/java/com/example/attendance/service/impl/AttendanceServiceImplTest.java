@@ -79,6 +79,30 @@ class AttendanceServiceImplTest {
         verify(records, never()).insert(any(AttendanceRecord.class)); verify(records, never()).updateById(any(AttendanceRecord.class));
     }
 
+    @Test void checkInEvidenceRequiresBothSessionAndTimeInStudentAndStaffViews() {
+        AttendanceRecord record = new AttendanceRecord(); record.setStudentId(2L); record.setCourseId(6L); record.setStatus("NORMAL");
+        record.setCheckInTime(LocalDateTime.now());
+        when(records.selectOne(any())).thenReturn(record);
+        assertEquals(false, service.studentSession(4L).get("checkedIn"));
+        login("ADMIN");
+        when(records.selectList(any())).thenReturn(java.util.List.of(record));
+        assertEquals(false, service.records(null, null, null, null).get(0).get("checkedIn"));
+        record.setSessionId(5L);
+        assertEquals(true, service.records(null, null, null, null).get(0).get("checkedIn"));
+        login("STUDENT");
+        assertEquals("SIGNED", service.studentSession(4L).get("checkInState"));
+        record.setCheckInTime(null);
+        assertEquals(false, service.studentSession(4L).get("checkedIn"));
+    }
+
+    @Test void closedTaskWithoutSessionIsClosedAndOtherClassCannotReadSession() {
+        task.setStatus("CLOSED"); when(sessions.selectOne(any())).thenReturn(null);
+        assertEquals("CLOSED", service.studentSession(4L).get("checkInState"));
+        CourseClass other = new CourseClass(); other.setClassId(99L); when(assignments.selectById(7L)).thenReturn(other);
+        var error = assertThrows(com.example.attendance.exception.BusinessException.class, () -> service.studentSession(4L));
+        assertEquals(40300, error.getCode());
+    }
+
     @Test void checkInRejectsExpiredClosedWrongCodeAndOtherClass() {
         session.setExpiresAt(LocalDateTime.now().minusSeconds(1)); assertRejected("签到码已过期，请联系教师重新开启签到");
         session.setExpiresAt(LocalDateTime.now().plusSeconds(45)); session.setStatus("CLOSED"); assertRejected("签到已结束");

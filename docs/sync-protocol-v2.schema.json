@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Attendance common Push v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "nodeId",
+    "events"
+  ],
+  "properties": {
+    "protocolVersion": {
+      "const": 2
+    },
+    "nodeId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "CLASS": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schoolId",
+        "classCode",
+        "name"
+      ],
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "classCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "COURSE": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schoolId",
+        "courseCode",
+        "name"
+      ],
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "courseCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "STUDENT": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schoolId",
+        "studentNo",
+        "name",
+        "classCode"
+      ],
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "studentNo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "classCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        }
+      }
+    },
+    "ATTENDANCE_TASK": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schoolId",
+        "ownerNodeId",
+        "courseCode",
+        "classCode",
+        "teacherNo",
+        "academicYear",
+        "semester",
+        "attendanceDate",
+        "status",
+        "closedAt"
+      ],
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "ownerNodeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "courseCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "classCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "teacherNo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "academicYear": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "semester": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "attendanceDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "status": {
+          "enum": [
+            "OPEN",
+            "CLOSED"
+          ]
+        },
+        "closedAt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "maxLength": 100,
+              "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "OPEN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "closedAt": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "closedAt": {
+                "type": "string",
+                "format": "date-time",
+                "maxLength": 100,
+                "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ATTENDANCE_RECORD": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schoolId",
+        "studentNo",
+        "taskUuid",
+        "status",
+        "recordedAt",
+        "remark",
+        "baseEventId"
+      ],
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "studentNo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[A-Za-z0-9_-]{1,30}$"
+        },
+        "taskUuid": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "status": {
+          "enum": [
+            "NORMAL",
+            "ABSENT",
+            "LATE",
+            "EARLY_LEAVE",
+            "LEAVE"
+          ]
+        },
+        "recordedAt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "maxLength": 100,
+              "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "remark": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseEventId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "originNodeId",
+        "entityType",
+        "entityId",
+        "operation",
+        "version",
+        "occurredAt",
+        "payload",
+        "signature"
+      ],
+      "properties": {
+        "eventId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "originNodeId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_-]{1,64}$"
+        },
+        "entityType": {
+          "enum": [
+            "CLASS",
+            "COURSE",
+            "STUDENT",
+            "ATTENDANCE_TASK",
+            "ATTENDANCE_RECORD"
+          ]
+        },
+        "entityId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "operation": {
+          "const": "UPSERT"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 100,
+          "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "signature": {
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "entityType": {
+                "const": "CLASS"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/CLASS"
+              },
+              "version": {
+                "const": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": {
+                "const": "COURSE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/COURSE"
+              },
+              "version": {
+                "const": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": {
+                "const": "STUDENT"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/STUDENT"
+              },
+              "version": {
+                "const": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": {
+                "const": "ATTENDANCE_TASK"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ATTENDANCE_TASK"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "entityType": {
+                "const": "ATTENDANCE_RECORD"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "payload": {
+                "$ref": "#/$defs/ATTENDANCE_RECORD"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

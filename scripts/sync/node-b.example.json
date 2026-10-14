@@ -1,0 +1,17 @@
+{
+  "SERVER_PORT": "8082",
+  "DB_URL": "jdbc:mysql://127.0.0.1:3306/attendance_node_b?serverTimezone=Asia/Shanghai",
+  "DB_USERNAME": "attendance_node_b",
+  "DB_PASSWORD": "<LOCAL_DATABASE_PASSWORD>",
+  "JWT_SECRET": "<NODE_B_INDEPENDENT_JWT_SECRET>",
+  "SYNC_ENABLED": "true",
+  "SYNC_NODE_ID": "NODE_B",
+  "SYNC_SCHOOL_ID": "SCHOOL_001",
+  "SYNC_TOKEN": "<NODE_B_RANDOM_TOKEN_AT_LEAST_32_CHARS>",
+  "SYNC_PRIVATE_KEY": "<NODE_B_PKCS8_DER_BASE64_PRIVATE_KEY>",
+  "SYNC_PUBLIC_KEY": "<NODE_B_SPKI_DER_BASE64_PUBLIC_KEY>",
+  "SYNC_INTERVAL_MS": "5000",
+  "SYNC_TIMEOUT_MS": "2000",
+  "SYNC_MAX_ATTEMPTS": "2",
+  "SYNC_PEERS_JSON": "[{\"nodeId\":\"NODE_A\",\"url\":\"http://192.168.1.101:8081/api\",\"token\":\"<NODE_A_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_A_SPKI_DER_BASE64_PUBLIC_KEY>\"},{\"nodeId\":\"NODE_C\",\"url\":\"http://192.168.1.103:8083/api\",\"token\":\"<NODE_C_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_C_SPKI_DER_BASE64_PUBLIC_KEY>\"}]"
+}

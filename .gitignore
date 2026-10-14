@@ -18,3 +18,18 @@ backups/
 **/backups/
 database/exports/
 *.dump
+**/*.local.json
+**/*.local.properties
+# Local handoffs, database snapshots and private keys
+GPT_PROJECT_HANDOFF.md
+.m2/
+config/application-local.yml
+**/application-*.local.yml
+**/application-*.local.yaml
+*.sql.gz
+*.sql.zip
+*.sql.bak
+*.pem
+*.key
+*.p12
+*.pfx

@@ -1,3 +1,4 @@
+-- Fictional demo data only. Import only into a newly initialized demo database.
 USE student_attendance;
 
 -- All demo accounts use password: 123456 (BCrypt hash).
@@ -14,42 +15,6 @@ INSERT INTO class_info (id, class_code, name, grade, major, advisor_teacher_id) 
 
 INSERT INTO student (id, user_id, student_no, name, gender, phone, email, class_id, enrollment_date) VALUES
 (1, 3, 'S2026001', '李同学', '女', '13800000002', 'student@example.com', 1, '2026-09-01');
-
--- 2532013班名单；学生登录用户名为学号，初始密码统一为 123456。
-INSERT INTO class_info (id, class_code, name, grade, major, advisor_teacher_id) VALUES
-(2, '2532013', '2532013班', '2025', NULL, 1);
-
-CREATE TEMPORARY TABLE demo_roster (
-  student_no VARCHAR(30) PRIMARY KEY,
-  name VARCHAR(50) NOT NULL
-);
-
-INSERT INTO demo_roster (student_no, name) VALUES
-('253201301', '吕嘉兴'), ('253201302', '杨承瑞'), ('253201303', '刘旭'),
-('253201304', '冯载轩'), ('253201305', '王至轩'), ('253201306', '贾澎博'),
-('253201307', '张浩然'), ('253201308', '张铠鹏'), ('253201309', '王浩宇'),
-('253201310', '闫霄同'), ('253201311', '高政煜'), ('253201312', '肖文宇'),
-('253201313', '赵亦寒'), ('253201314', '宋新宇'), ('253201315', '石卓烁'),
-('253201316', '王鸿儒'), ('253201317', '张迦恩'), ('253201318', '刘家烨'),
-('253201319', '刘镕赫'), ('253201320', '周语轩'), ('253201321', '龙子河'),
-('253201322', '陈茂杰'), ('253201323', '刘佳博'), ('253201324', '姬罡'),
-('253201325', '陈羽泽'), ('253201326', '王思源'), ('253201327', '邓天成'),
-('253201328', '刘敬坤'), ('253201329', '张鑫睿'), ('253201330', '李武斌'),
-('253201331', '张天烁'), ('253201332', '芦睿'), ('253201333', '李宗岳'),
-('253201334', '王鹏宇'), ('253201335', '康济恩'), ('253201336', '施思年'),
-('253201337', '雷俊颖'), ('253201338', '库锦芸'), ('253201339', '高璟怡'),
-('253201340', '田嘉慧'), ('253201341', '李晔霞'), ('253201342', '徐嘉嘉');
-
-INSERT INTO `user` (username, password, real_name, role, status)
-SELECT student_no, '$2a$10$WOSQJNROOOUASR0e0Sbrhu0871Dj8IxEcgxxmQpGWb7KR442A2I0u', name, 'STUDENT', 1
-FROM demo_roster;
-
-INSERT INTO student (user_id, student_no, name, class_id, enrollment_date)
-SELECT u.id, r.student_no, r.name, 2, '2025-09-01'
-FROM demo_roster r
-JOIN `user` u ON u.username = r.student_no;
-
-DROP TEMPORARY TABLE demo_roster;
 
 INSERT INTO course (id, course_code, name, credit, total_hours, description) VALUES
 (1, 'CS101', 'Java程序设计', 4.0, 64, 'Java语言与面向对象程序设计');

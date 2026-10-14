@@ -33,7 +33,8 @@ import StatusBadge from '../components/StatusBadge.vue'
 const rows = ref([]), teaching = ref([]), loading = ref(false), visible = ref(false), filter = ref(), error = ref(false), creating = ref(false), closingId = ref(null)
 const signVisible = ref(false), signData = ref(null), signRemaining = ref(0), openingId = ref(null), closingSession = ref(false)
 let countdownTimer, pollTimer, serverOffset = 0
-const form = reactive({ courseClassId: '', attendanceDate: new Date().toISOString().slice(0, 10), remark: '' })
+const today = new Date()
+const form = reactive({ courseClassId: '', attendanceDate: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`, remark: '' })
 const label = id => { const item = teaching.value.find(value => value.id === id); return item ? `${item.courseName} / ${item.className}` : `#${id}` }
 async function load() { loading.value = true; error.value = false; try { rows.value = await request.get('/attendance/tasks', { params: { courseClassId: filter.value || undefined } }) } catch { error.value = true } finally { loading.value = false } }
 async function create() { creating.value = true; try { await request.post('/attendance/tasks', form); ElMessage.success({ message: '考勤任务已创建', showClose: true }); visible.value = false; await load() } finally { creating.value = false } }

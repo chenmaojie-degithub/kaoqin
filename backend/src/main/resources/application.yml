@@ -35,3 +35,14 @@ attendance:
     name: ${SEMESTER_NAME:第一学期}
     start-date: ${SEMESTER_START_DATE:2026-09-01}
     end-date: ${SEMESTER_END_DATE:2027-01-17}
+sync:
+  enabled: ${SYNC_ENABLED:false}
+  node-id: ${SYNC_NODE_ID:}
+  school-id: ${SYNC_SCHOOL_ID:}
+  token: ${SYNC_TOKEN:}
+  private-key: ${SYNC_PRIVATE_KEY:}
+  public-key: ${SYNC_PUBLIC_KEY:}
+  peers-json: ${SYNC_PEERS_JSON:[]}
+  interval-ms: ${SYNC_INTERVAL_MS:5000}
+  timeout-ms: ${SYNC_TIMEOUT_MS:2000}
+  max-attempts: ${SYNC_MAX_ATTEMPTS:2}

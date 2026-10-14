@@ -1,0 +1,28 @@
+entity,wire_field,our_table_or_source,system_b_table_field,system_c_table_field,conversion,missing_or_conflict_rule
+ALL,schoolId,SYNC_SCHOOL_ID,,,Stable school namespace,SCHOOL_MISMATCH
+CLASS,classCode,class_info.class_code,,,String preserve case,CATALOG_MAPPING_MISSING
+CLASS,name,class_info.name,,,Display snapshot only; never overwrite local name,Bind by code
+COURSE,courseCode,course.course_code,,,String preserve case,CATALOG_MAPPING_MISSING
+COURSE,name,course.name,,,Display snapshot only; never overwrite local name,Bind by code
+STUDENT,studentNo,student.student_no,,,String preserve leading zero,STUDENT_NOT_FOUND
+STUDENT,name,student.name,,,Display snapshot; do not copy login/password,Bind by studentNo
+STUDENT,classCode,student.class_id -> class_info.class_code,,,Explicit class code mapping,STUDENT_CLASS_MISMATCH
+ATTENDANCE_TASK,entityId,sync_identity_map <-> attendance_task.id,,,Persistent task UUID,LOCAL_TASK_UNIQUE_CONFLICT
+ATTENDANCE_TASK,courseCode,course_class.course_id -> course.course_code,,,Explicit course code mapping,TEACHING_MAPPING_MISSING
+ATTENDANCE_TASK,classCode,course_class.class_id -> class_info.class_code,,,Explicit class code mapping,TEACHING_MAPPING_MISSING
+ATTENDANCE_TASK,teacherNo,course_class.teacher_id -> teacher.teacher_no,,,Shared teacher code not local ID,TEACHING_MAPPING_MISSING
+ATTENDANCE_TASK,academicYear,course_class.academic_year,,,Agree term representation,TEACHING_MAPPING_MISSING
+ATTENDANCE_TASK,semester,course_class.semester,,,Agree term representation,TEACHING_MAPPING_MISSING
+ATTENDANCE_TASK,attendanceDate,attendance_task.attendance_date,,,Asia/Shanghai yyyy-MM-dd,Reject invalid date
+ATTENDANCE_TASK,status,attendance_task.status,,,OPEN or CLOSED,Reject unknown state
+ATTENDANCE_TASK,closedAt,attendance_task.closed_at,,,Timezone timestamp or null,Reject incompatible status/time
+ATTENDANCE_RECORD,entityId,taskUuid + studentUuid,,,Deterministic record UUID,RECORD_UUID_MISMATCH
+ATTENDANCE_RECORD,taskUuid,sync_identity_map -> attendance_task.id,,,No peer auto-increment IDs,IDENTITY_MAPPING_MISSING
+ATTENDANCE_RECORD,studentNo,student.student_no -> attendance_record.student_id,,,No matching by name,IDENTITY_MAPPING_MISSING
+ATTENDANCE_RECORD,status,attendance_record.status,,,Explicit NORMAL/ABSENT/LATE/EARLY_LEAVE/LEAVE conversion,Reject unknown status
+ATTENDANCE_RECORD,recordedAt,check_in_time/updated_at -> signed event payload,,,Timezone timestamp or null; never create local password receipt,Preserve in event JSON
+ATTENDANCE_RECORD,remark,attendance_record.remark,,,Nullable ordinary remark max 500,Update only matching baseline
+ATTENDANCE_RECORD,baseEventId,sync_identity_map.last_event_id,,,Use observed previous applied event UUID,BASE_EVENT_CONFLICT
+EVENT,version,sync_identity_map.version,,,Current version + 1 for records,PREVIOUS_VERSION_MISSING or VERSION_COLLISION
+EVENT,eventId,sync_event.event_id,,,UUID retained on retry,EVENT_ID_COLLISION
+EVENT,originNodeId,Source node identity,,,Keep original source on forwarding,Verify original signature

@@ -2,7 +2,7 @@
 
 这是一个可运行的前后端分离学生考勤管理系统，包含管理员、教师和学生三种角色，支持资料管理、课程分配、考勤任务、批量录入、请假审批和真实数据统计。
 
-## 签到入口修复与三节点同步规划
+## 签到入口修复与三节点数据同步
 
 学生首页点击“去签到”，进入“课程 / 今日安排”顶部的“今日签到任务”。该区域按本人班级当天考勤任务展示，不要求当天存在课表。教师在“考勤任务”对今天的任务开启60秒签到后，学生页面每5秒发现新任务，也可以点击“刷新签到”。
 
@@ -10,12 +10,35 @@
 
 本次第一阶段无需新增字段或执行迁移SQL，不要重新执行schema.sql覆盖已有库。
 
-- [第一阶段检查、修改和验证报告](docs/PHASE1_REPORT.md)
-- [第二阶段三节点同步协议、辅助表与任务拆分](docs/SYNC_DESIGN.md)
+2026-10-14复核：补齐详情凭证判断与教师默认日期时区问题；Maven 20项测试及前端构建通过。历史创建403尚未取得原请求证据，真实浏览器与MySQL并发验收仍待完成，详见报告。
 
-同步功能目前只有设计草案，尚无可运行的Pull/Push接口或三节点启动脚本。三方协议、身份映射和所属节点验证需确认后分阶段实施。
+- [第一阶段检查、修改和验证报告](docs/PHASE1_REPORT.md)
+- [历史架构草稿（已由v2协议替代）](docs/SYNC_DESIGN.md)
+
+现已实现节点认证的 `POST /api/sync/push` 和 `GET /api/sync/pull`、v2普通考勤JSON事件、增量日志、持久化去重/冲突、默认5秒自动Push/Pull，以及管理员“数据同步”页面。同步默认关闭；启用前仅增量执行 `database/migrate_sync.sql` 并配置节点。现有第一阶段无需迁移的说明只适用于签到修复本身。
+
+- [当前v2统一协议与签名规则](docs/SYNC_PROTOCOL.md)
+- [五实体JSON样例](docs/sync-v2-examples.json) · [字段映射模板](docs/SYNC_FIELD_MAPPING.md)
+- [三节点配置、Windows启动及其他开发者接入](docs/SYNC_DEPLOYMENT.md)
+- [本轮改动与测试报告](docs/SYNC_REPORT.md)
+
+本机测试使用独立MySQL实例和虚构数据，不复制业务库。已取消跨节点密码转发/远程验证计划。三端只交换学生、班级、课程、任务和普通考勤结果；本机60秒密码签到成功后转换为相同格式，其他系统无需支持密码签到。记录允许跨节点基于准确版本和前一事件ID修正，冲突保留待处理。历史 `SYNC_DESIGN.md` 为草稿，实际接口字段以 `SYNC_PROTOCOL.md` 为准。
 
 如教师创建任务遇到403，请核对Network响应、实际登录角色（`GET /api/auth/me`）、教学班归属及Origin。前端使用同源`/api`代理；当前后端仅允许localhost/127.0.0.1跨域来源。学校IP白名单将在部署阶段显式配置，不能通过开放角色或任意跨域绕过权限。
+
+## 在学校电脑获取本分支
+
+```powershell
+git clone --branch feat/three-node-sync https://github.com/chenmaojie-degithub/kaoqin.git
+cd kaoqin
+mvn -B -ntp -f backend/pom.xml package
+Push-Location frontend
+npm.cmd ci
+npm.cmd run build
+Pop-Location
+```
+
+安装 Java 17、Maven 3.9+、MySQL 8 和 Node.js 后执行。构建产物与数据库不随 Git 分发。已有业务库仅按部署文档执行增量迁移；不要导入 schema.sql、data.sql 或测试夹具。`data.sql` 仅保留虚构演示账号，不包含真实班级名单。学校三节点的 IP、密钥生成、字段映射和启动方式详见 [三节点部署说明](docs/SYNC_DEPLOYMENT.md)。
 
 ## 技术栈
 
@@ -156,7 +179,6 @@ data.sql 中三个账号的密码都是 123456：
 | 教师 | teacher | 123456 |
 | 学生 | student | 123456 |
 
-`2532013班`的 42 个学生账号也可直接登录，用户名为学号（例如 `253201301`），初始密码均为 `123456`。
 
 测试密码采用 BCrypt 保存，仅用于本地演示。部署后应立即修改。
 

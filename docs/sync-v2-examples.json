@@ -1,0 +1,93 @@
+{
+  "protocolVersion": 2,
+  "nodeId": "NODE_B",
+  "events": [
+    {
+      "eventId": "8351e1f6-37d1-4f0f-9e4a-2b0312853b88",
+      "originNodeId": "NODE_B",
+      "entityType": "CLASS",
+      "entityId": "33da076e-917f-34aa-86f6-31ef8b98a129",
+      "operation": "UPSERT",
+      "version": 1,
+      "occurredAt": "2026-10-14T10:30:01+08:00",
+      "payload": {
+        "schoolId": "TEST_SCHOOL",
+        "classCode": "CLASS_1",
+        "name": "Fictional Class"
+      },
+      "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "eventId": "be4e1dc4-6ffb-4cda-8c37-584fbbea5268",
+      "originNodeId": "NODE_B",
+      "entityType": "COURSE",
+      "entityId": "93dba647-e0cd-338a-b72d-481f49263f80",
+      "operation": "UPSERT",
+      "version": 1,
+      "occurredAt": "2026-10-14T10:30:01+08:00",
+      "payload": {
+        "schoolId": "TEST_SCHOOL",
+        "courseCode": "COURSE_B",
+        "name": "Fictional Course B"
+      },
+      "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "eventId": "64f6db3f-7070-444a-853f-3f8861db83ff",
+      "originNodeId": "NODE_B",
+      "entityType": "STUDENT",
+      "entityId": "859539e1-f6d1-3546-855c-7a6e837a0400",
+      "operation": "UPSERT",
+      "version": 1,
+      "occurredAt": "2026-10-14T10:30:01+08:00",
+      "payload": {
+        "schoolId": "TEST_SCHOOL",
+        "studentNo": "S001",
+        "name": "Fictional Student",
+        "classCode": "CLASS_1"
+      },
+      "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "eventId": "26b1a7c5-1d3a-4883-b746-16951c7f4089",
+      "originNodeId": "NODE_B",
+      "entityType": "ATTENDANCE_TASK",
+      "entityId": "a50b3cd1-77be-4f55-b3c6-03fe88c7da00",
+      "operation": "UPSERT",
+      "version": 1,
+      "occurredAt": "2026-10-14T10:30:01+08:00",
+      "payload": {
+        "schoolId": "TEST_SCHOOL",
+        "ownerNodeId": "NODE_B",
+        "courseCode": "COURSE_B",
+        "classCode": "CLASS_1",
+        "teacherNo": "T001",
+        "academicYear": "2026-2027",
+        "semester": "第一学期",
+        "attendanceDate": "2026-10-14",
+        "status": "OPEN",
+        "closedAt": null
+      },
+      "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    },
+    {
+      "eventId": "e51a68c3-f323-4517-a112-05debfae8fcd",
+      "originNodeId": "NODE_B",
+      "entityType": "ATTENDANCE_RECORD",
+      "entityId": "cc68103b-7f56-3cf2-8f7c-bcb3a819dc52",
+      "operation": "UPSERT",
+      "version": 1,
+      "occurredAt": "2026-10-14T10:30:01+08:00",
+      "payload": {
+        "schoolId": "TEST_SCHOOL",
+        "studentNo": "S001",
+        "taskUuid": "a50b3cd1-77be-4f55-b3c6-03fe88c7da00",
+        "status": "NORMAL",
+        "recordedAt": "2026-10-14T10:30:00+08:00",
+        "remark": null,
+        "baseEventId": null
+      },
+      "signature": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    }
+  ]
+}

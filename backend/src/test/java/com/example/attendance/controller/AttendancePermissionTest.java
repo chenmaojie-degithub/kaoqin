@@ -57,4 +57,21 @@ class AttendancePermissionTest {
         mvc.perform(options("/attendance/tasks").header("Origin","http://192.168.1.50:5173").header("Access-Control-Request-Method","POST"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test void bearerRequestUsesCurrentAccountRoleAndRejectsDisabledAccount() throws Exception {
+        when(jwt.username("test-token")).thenReturn("test");
+        LoginUser teacher = (LoginUser) principal("TEACHER").getPrincipal();
+        when(users.loadUserByUsername("test")).thenReturn(teacher);
+        String body = "{\"courseClassId\":7,\"attendanceDate\":\"2026-10-14\"}";
+        mvc.perform(post("/attendance/tasks").header("Authorization", "Bearer test-token").contentType("application/json").content(body))
+                .andExpect(status().isOk());
+        verify(service).createTask(any()); clearInvocations(service);
+        when(users.loadUserByUsername("test")).thenReturn((LoginUser) principal("STUDENT").getPrincipal());
+        mvc.perform(post("/attendance/tasks").header("Authorization", "Bearer test-token").contentType("application/json").content(body))
+                .andExpect(status().isForbidden());
+        teacher.user().setStatus(0); when(users.loadUserByUsername("test")).thenReturn(teacher);
+        mvc.perform(post("/attendance/tasks").header("Authorization", "Bearer test-token").contentType("application/json").content(body))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(service);
+    }
 }

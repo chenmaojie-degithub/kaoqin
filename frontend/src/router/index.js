@@ -6,6 +6,7 @@ const routes=[
  {path:'/',component:Layout,redirect:'/dashboard',children:[
   {path:'dashboard',component:()=>import('../views/DashboardView.vue'),meta:{title:'数据看板',roles:['ADMIN','TEACHER','STUDENT']}},
   {path:'users',component:()=>import('../views/UserView.vue'),meta:{title:'账号管理',roles:['ADMIN']}},
+  {path:'sync',component:()=>import('../views/SyncView.vue'),meta:{title:'数据同步',roles:['ADMIN']}},
   {path:'students',component:()=>import('../views/StudentView.vue'),meta:{title:'学生管理',roles:['ADMIN']}},
   {path:'teachers',component:()=>import('../views/TeacherView.vue'),meta:{title:'教师管理',roles:['ADMIN']}},
   {path:'classes',component:()=>import('../views/ClassView.vue'),meta:{title:'班级管理',roles:['ADMIN']}},
