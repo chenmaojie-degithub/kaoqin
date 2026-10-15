@@ -13,5 +13,7 @@
   "SYNC_INTERVAL_MS": "5000",
   "SYNC_TIMEOUT_MS": "2000",
   "SYNC_MAX_ATTEMPTS": "2",
-  "SYNC_PEERS_JSON": "[{\"nodeId\":\"NODE_B\",\"url\":\"http://192.168.1.102:8082/api\",\"token\":\"<NODE_B_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_B_SPKI_DER_BASE64_PUBLIC_KEY>\"},{\"nodeId\":\"NODE_C\",\"url\":\"http://192.168.1.103:8083/api\",\"token\":\"<NODE_C_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_C_SPKI_DER_BASE64_PUBLIC_KEY>\"}]"
+  "SYNC_PEERS_JSON": "[{\"nodeId\":\"NODE_B\",\"url\":\"http://10.32.54.193:8082/api\",\"token\":\"<NODE_B_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_B_SPKI_DER_BASE64_PUBLIC_KEY>\"},{\"nodeId\":\"NODE_C\",\"url\":\"http://10.32.54.172:8083/api\",\"token\":\"<NODE_C_RANDOM_TOKEN_AT_LEAST_32_CHARS>\",\"publicKey\":\"<NODE_C_SPKI_DER_BASE64_PUBLIC_KEY>\"}]",
+  "SERVER_ADDRESS": "0.0.0.0",
+  "CORS_ALLOWED_ORIGINS": "http://10.32.54.192:5173"
 }

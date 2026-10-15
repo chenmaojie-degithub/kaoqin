@@ -1,5 +1,7 @@
 # Windows 三节点运行与其他开发者接入
 
+学校实机部署请优先阅读 [学校部署与协作操作手册](SCHOOL_LAN.md)：只配置本系统A，同学各自实现对接。本文的三同后端脚本仅用于隔离实验，不是代同学配置学校电脑。
+
 ## 本轮环境和隔离方式
 
 已检查本机 MySQL 8.0.30、Node/npm；Java17和Maven3.9.9位于项目忽略目录 tmp/tools，全局 PATH 没有Java/Maven。原MySQL业务实例监听3306，当前账号只有 student_attendance 的权限。本轮没有修改其权限或业务数据。
@@ -18,7 +20,7 @@ npm.cmd run build
 Pop-Location
 ```
 
-没有设置 SYNC_IT_DB_PORT 时，真实三节点集成测试明确跳过；其余27项测试运行。完整联调见下面命令。JAR生成在 backend/target/attendance-backend-1.0.0.jar。
+没有设置 SYNC_IT_DB_PORT 时，真实三节点集成测试明确跳过；其余28项测试运行。完整联调见下面命令。JAR生成在 backend/target/attendance-backend-1.0.0.jar。
 
 首次安装同步辅助表执行 `database/migrate_sync.sql`；已有v1辅助表时只增量执行 `database/migrate_sync_v2.sql` 增加last_event_id。由部署人员选择目标库导入，本轮未在真实库执行。首次安装脚本只新增五张辅助表及一行发布状态，不包含 USE、DROP 或业务表修改。不要对既有库执行 schema.sql/data.sql/测试fixture。脚本不会由应用自动执行；SYNC_ENABLED 默认false，启用前必须完成迁移与配置。
 

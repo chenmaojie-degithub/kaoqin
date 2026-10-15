@@ -20,7 +20,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(value = AttendanceController.class, properties = "spring.config.import=optional:classpath:/test-no-local-config.properties")
+@WebMvcTest(value = AttendanceController.class, properties = {"spring.config.import=optional:classpath:/test-no-local-config.properties", "attendance.cors.allowed-origins=http://10.32.54.192:5173"})
 @Import(SecurityConfig.class)
 @ContextConfiguration(classes = {AttendanceController.class, SecurityConfig.class, JwtAuthenticationFilter.class, GlobalExceptionHandler.class})
 class AttendancePermissionTest {
@@ -56,6 +56,20 @@ class AttendancePermissionTest {
     @Test void unexpectedLanOriginIsRejectedRatherThanWeakeningCors() throws Exception {
         mvc.perform(options("/attendance/tasks").header("Origin","http://192.168.1.50:5173").header("Access-Control-Request-Method","POST"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test void schoolOriginAllowsPreflightButStillRequiresJwtAndTeacherRole() throws Exception {
+        String origin="http://10.32.54.192:5173";
+            mvc.perform(options("/attendance/tasks").header("Origin",origin).header("Access-Control-Request-Method","POST").header("Access-Control-Request-Headers","authorization,content-type"))
+                    .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin",origin));
+            mvc.perform(get("/attendance/tasks").header("Origin",origin)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/attendance/tasks").header("Origin",origin).with(authentication(principal("STUDENT"))).contentType("application/json").content("{\"courseClassId\":7,\"attendanceDate\":\"2026-10-15\"}"))
+                    .andExpect(status().isForbidden());
+        for (String rejectedOrigin : new String[]{"http://10.32.54.192:9999", "http://10.32.54.193:5173", "http://10.32.54.172:5173"}) {
+        mvc.perform(options("/attendance/tasks").header("Origin",rejectedOrigin).header("Access-Control-Request-Method","POST"))
+                .andExpect(status().isForbidden());
+        }
+        verifyNoInteractions(service);
     }
 
     @Test void bearerRequestUsesCurrentAccountRoleAndRejectsDisabledAccount() throws Exception {

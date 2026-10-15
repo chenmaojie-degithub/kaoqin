@@ -27,7 +27,7 @@ if(Test-Path -LiteralPath $stateFile){throw 'Process state already exists; run S
 $previousEnvironment=@{}
 try {
     foreach($property in $nodeConfig.PSObject.Properties) {
-        if($property.Name -notmatch '^(SERVER_PORT|DB_URL|DB_USERNAME|DB_PASSWORD|JWT_SECRET|SYNC_[A-Z_]+)$'){throw 'Unexpected environment key'}
+        if($property.Name -notmatch '^(SERVER_PORT|SERVER_ADDRESS|CORS_ALLOWED_ORIGINS|DB_URL|DB_USERNAME|DB_PASSWORD|JWT_SECRET|SYNC_[A-Z_]+)$'){throw 'Unexpected environment key'}
         $previousEnvironment[$property.Name]=[Environment]::GetEnvironmentVariable($property.Name,'Process')
         [Environment]::SetEnvironmentVariable($property.Name,[string]$property.Value,'Process')
     }
